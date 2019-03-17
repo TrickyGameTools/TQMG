@@ -84,7 +84,17 @@ class TQMGFont{
 
 
     }
+    #endregion
 
+    #region Link ups....
+    /* The class above is only available as a 'regular' class in case you want more than one object for whatever reason. 
+     * Since I rarely expect to need this the class below just serves as the main thing.
+     */
+    static class TQMG {
+        static Class_TQMG me;
+        static public void Init(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) { me = new Class_TQMG( agfxm,  agfxd,  aSB, ajcr); }
+        static public TQMGFont GetFont(string dir) => me.GetFont(dir);
+    }
     #endregion
 
 
