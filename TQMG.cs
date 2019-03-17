@@ -18,12 +18,14 @@ namespace TrickyUnits
 
 #region image
 class TQMGImage{
+        Class_TQMG Mama;
 }
 #endregion
 
 #region text
 class TQMGFont{
-}
+        Class_TQMG Mama;
+    }
 
     #endregion
 
