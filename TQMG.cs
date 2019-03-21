@@ -9,6 +9,8 @@
 // Version: 19.03.19
 // EndLic
 
+#undef qdebuglog
+
 
 #region Yeah, we're using this.... Any questions?
 using System;
@@ -28,7 +30,8 @@ class TQMGImage{
         readonly Texture2D[] tex;
         int hotx = 0, hoty = 0;
         int wdth = -1, hght = -1;
-        bool allowvar = false;
+        bool allowvar = false;        
+        #endregion
 
 
         #region Image Construction Site
@@ -70,6 +73,7 @@ class TQMGImage{
             // This will be used by the font manager.
             tex = new Texture2D[length];
             allowvar = avar;
+            Mama = parent;
         }
 
         public TQMGImage(Class_TQMG parent, TJCRDIR JCR,string bundle,int max) {
@@ -116,6 +120,7 @@ class TQMGImage{
             // Saves loading times, and also RAM you never needed. Or does it?
             try {
                 if (tex[idx] != null) return;
+                TQMG.Log($"IRequire({idx},\"{entry}\");");
                 var bt = Mama.jcr.ReadFile(entry);                
                 tex[idx] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
                 bt.Close();
@@ -130,7 +135,7 @@ class TQMGImage{
             return tex[idx] != null;
         }
 
-        public void IGetF(int idx, ref int w,ref int h) { w = Width; h = Height; }
+        public void IGetF(int idx, ref int w,ref int h) { w = tex[idx].Width; h = tex[idx].Height; }
         #endregion
 
 
@@ -141,6 +146,7 @@ class TQMGImage{
             dc.Y = y;
             Mama.spriteBatch.Draw(tex[Frame], dc, Mama.mColor);
         }
+        #endregion
 
     }
     #endregion
@@ -162,19 +168,26 @@ class TQMGImage{
         public TQMGText(TQMGFont parentfont, string text) {
             var x = 0;
             Height = 0;
+            Ouwe = parentfont;
             for(int i = 0; i < text.Length; i++) {
                 var l = new Letter();
                 var c = (byte)text[i];
                 int w=0, h=0;
-                l.x = x;
-                Ouwe.fimg.IRequire(c,$"{Ouwe.jcrdir}{c}.png");
-                if (Ouwe.fimg.IGot(c)){
-                    Ouwe.fimg.IGetF(c, ref w, ref h);
+                if (c == 32)
+                    x += Height/2;
+                else {
                     l.x = x;
-                    l.index = c;
-                    x += w;
-                    Width = x;
-                    if (Height < h) Height = h;
+                    Ouwe.fimg.IRequire(c, $"{Ouwe.jcrdir}{c}.png");
+                    if (Ouwe.fimg.IGot(c)) {
+                        Ouwe.fimg.IGetF(c, ref w, ref h);
+                        l.x = x;
+                        l.index = c;
+                        TQMG.Log($"Char {text[i]} ({c}) listed in. >> x={x}; w={w}; h={h}");
+                        x += w+1;
+                        Width = x;
+                        if (Height < h) Height = h;
+                        FSTRING.Add(l);
+                    }
                 }
             }
         }
@@ -197,7 +210,7 @@ class TQMGImage{
                     return;
             }
             foreach (Letter L in FSTRING) {
-                Ouwe.fimg.Draw(bx + x + L.x, y);
+                Ouwe.fimg.Draw(bx + x + L.x, y, L.index);
             }
         }
 
@@ -217,7 +230,7 @@ class TQMGImage{
             if (!qstr.Suffixed(jcrdir,"/")) jcrdir += "/";
             ok = false;            
             foreach(string ent in Mama.jcr.Entries.Keys) {
-                ok = ok || (qstr.Prefixed(ent, jcrdir) && qstr.Suffixed(ent,".PNG");
+                ok = ok || (qstr.Prefixed(ent, jcrdir) && qstr.Suffixed(ent,".PNG"));
             }
             if (!ok) {
                 Mama.Error($"JCR6 resource does not appear to have font folder \"{dir}\"!");
@@ -226,6 +239,10 @@ class TQMGImage{
         }
 
         public TQMGText Text(string text) => new TQMGText(this, text);
+        public void DrawText(string text, int x, int y, TQMG_TextAlign align = TQMG_TextAlign.Left) {
+            var txt = Text(text);
+            txt.Draw(x, y, align);
+        }
         
     }
 
@@ -246,7 +263,7 @@ class TQMGImage{
 
         public Color mColor = new Color(255, 255, 255);
         public float rotation = 0;
-        public Rectangle srcRec=null;
+        //public Rectangle srcRec=null;
 
         public void Error(string em) {
             if (CRASH && em!="Ok") throw new System.Exception(em);
@@ -274,6 +291,8 @@ class TQMGImage{
 
         public TQMGImage GetImage(string image) => new TQMGImage(this, image);
 
+        public int ScrWidth => gfxd.PresentationParameters.BackBufferWidth;
+        public int ScrHeight => gfxd.PresentationParameters.BackBufferHeight;
 
     }
     #endregion
@@ -287,6 +306,24 @@ class TQMGImage{
         static public void Init(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) { me = new Class_TQMG( agfxm,  agfxd,  aSB, ajcr); }
         static public TQMGFont GetFont(string dir) => me.GetFont(dir);
         static public TQMGImage GetImage(string imagefile) => me.GetImage(imagefile);
+        static public int ScrWidth => me.ScrHeight;
+        static public int ScrHeight => me.ScrHeight;
+        static public void UglyTile(TQMGImage img, int x, int y, int w, int h, int frame=0) { // Tiles, but doesn't take viewports in mind, so when textures stick out, so be it.
+            for (int ix = x; ix < x + w; ix+=img.Width)
+                for (int iy = y; iy < y + h; iy+=img.Height)
+                    img.Draw(ix, iy,frame);
+        }
+        static public void Color(byte r, byte g, byte b) {
+            me.mColor.R = r;
+            me.mColor.G = g;
+            me.mColor.B = b;
+        }
+
+        static public void Log(string msg) {
+#if qdebuglog
+            TeddyEdit.ProjectData.Log(msg);
+#endif
+        }
     }
     #endregion
 
