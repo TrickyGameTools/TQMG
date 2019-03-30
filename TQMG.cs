@@ -62,6 +62,7 @@ class TQMGImage{
             parent.Error("Ok");
             Mama = parent;
             var bt = Mama.jcr.ReadFile(file);
+            if (bt == null) throw new Exception($"new TQMGImage(<parent>,\"{file}\"): Failure -- {JCR6.JERROR}");
             tex = new Texture2D[1];
             tex[0] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
             bt.Close();
@@ -95,6 +96,12 @@ class TQMGImage{
                 bt.Close();
             }
         }
+
+        public TQMGImage(Class_TQMG parent, QuickStream stream, bool close=true)  {
+            tex = new Texture2D[1];
+            tex[0] = Texture2D.FromStream(Mama.gfxd, stream.GetStream());
+            if (close) stream.Close();
+        }
         #endregion
 
         #region Image Format
@@ -107,8 +114,8 @@ class TQMGImage{
 
         public int Height {
             get {
-                if (wdth == -1) wdth = tex[0].Width;
-                return wdth;
+                if (hght == -1) hght = tex[0].Height;
+                return hght;
             }
         }
         #endregion
@@ -290,6 +297,7 @@ class TQMGImage{
         }
 
         public TQMGImage GetImage(string image) => new TQMGImage(this, image);
+        public TQMGImage GetImage(QuickStream stream, bool close = true) => new TQMGImage(this, stream, close);
 
         public int ScrWidth => gfxd.PresentationParameters.BackBufferWidth;
         public int ScrHeight => gfxd.PresentationParameters.BackBufferHeight;
@@ -306,6 +314,7 @@ class TQMGImage{
         static public void Init(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) { me = new Class_TQMG( agfxm,  agfxd,  aSB, ajcr); }
         static public TQMGFont GetFont(string dir) => me.GetFont(dir);
         static public TQMGImage GetImage(string imagefile) => me.GetImage(imagefile);
+        static public TQMGImage GetImage(QuickStream stream, bool close=true) => me.GetImage(stream,close);
         static public int ScrWidth => me.ScrHeight;
         static public int ScrHeight => me.ScrHeight;
         static public void UglyTile(TQMGImage img, int x, int y, int w, int h, int frame=0) { // Tiles, but doesn't take viewports in mind, so when textures stick out, so be it.
@@ -316,8 +325,52 @@ class TQMGImage{
         static public void Color(byte r, byte g, byte b) {
             me.mColor.R = r;
             me.mColor.G = g;
-            me.mColor.B = b;
+            me.mColor.B = b;            
         }
+        /// <summary>
+        /// Sets the alpha value. 
+        /// </summary>
+        /// <param name="alpha">Alpha as a number from 0 till 255</param>
+        static public void SetAlpha(byte alpha) {
+            me.mColor.A = alpha;
+        }
+        /// <summary>
+        /// Sets the alpha value.
+        /// </summary>
+        /// <param name="alpha">Alpha as a float number from 0 till 1 (will be recalculated into the 0 till 255 scale)</param>
+        static public void SetAlpha(float alpha) {
+            // Although I'm not fully sure if Kthura will be converted to C#, but if it will be, I will NEED this function!
+            // The if routines are not meant to cover up bad usage (although that was just a nice side effect), but rather to catch up rounding errors. They could give unintential yet funny unwanted results.
+            if (alpha < 0) {
+                me.mColor.A = 0;
+            } else if (alpha > 1) {
+                me.mColor.A = 255;
+            } else {
+                me.mColor.A = (byte)(255.0 * alpha);
+            }
+        }
+
+
+
+        #region Rectangle routine. Thanks to Stack overflow: https://stackoverflow.com/questions/5751732/draw-rectangle-in-xna-using-spritebatch (GONeal)!
+        // Although I must say the code has been modifed for my own personal interests!
+        private static Texture2D rect;
+        private static Rectangle mRectangle=new Rectangle();
+        public static void DrawRectangle(Rectangle coords) {
+            if (rect == null) {
+                rect = new Texture2D(me.gfxd, 1, 1);
+                rect.SetData(new[] { Microsoft.Xna.Framework.Color.White });
+            }
+            me.spriteBatch.Draw(rect, coords, me.mColor);
+        }
+        public static void DrawRectangle(int x, int y, int w, int h) {
+            mRectangle.X = x;
+            mRectangle.Y = y;
+            mRectangle.Width = w;
+            mRectangle.Height = h;
+            DrawRectangle(mRectangle);
+        }
+        #endregion
 
         static public void Log(string msg) {
 #if qdebuglog
