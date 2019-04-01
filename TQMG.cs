@@ -78,6 +78,7 @@ class TQMGImage{
         }
 
         public TQMGImage(Class_TQMG parent, TJCRDIR JCR,string bundle,int max) {
+            Mama = parent;
             var b = bundle.ToUpper();
             var fls = new List<string>();
             if (qstr.Suffixed(b,"/")) b += "/";
@@ -98,6 +99,7 @@ class TQMGImage{
         }
 
         public TQMGImage(Class_TQMG parent, QuickStream stream, bool close=true)  {
+            Mama = parent;
             tex = new Texture2D[1];
             tex[0] = Texture2D.FromStream(Mama.gfxd, stream.GetStream());
             if (close) stream.Close();
@@ -260,6 +262,7 @@ class TQMGImage{
 
     #region core
     class Class_TQMG {
+      
 
         readonly public GraphicsDeviceManager gfxm;
         readonly public SpriteBatch spriteBatch;
@@ -311,12 +314,20 @@ class TQMGImage{
      */
     static class TQMG {
         static Class_TQMG me;
+        public delegate void dLog(string msg); static dLog mLog = delegate { };
         static public void Init(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) { me = new Class_TQMG( agfxm,  agfxd,  aSB, ajcr); }
         static public TQMGFont GetFont(string dir) => me.GetFont(dir);
         static public TQMGImage GetImage(string imagefile) => me.GetImage(imagefile);
         static public TQMGImage GetImage(QuickStream stream, bool close=true) => me.GetImage(stream,close);
         static public int ScrWidth => me.ScrHeight;
         static public int ScrHeight => me.ScrHeight;
+
+        /// <summary>
+        /// Register a "Log" function for debugging purposes.
+        /// </summary>
+        /// <param name="l"></param>
+        static public void RegLog(dLog l) { mLog = (dLog)l; }
+
         static public void UglyTile(TQMGImage img, int x, int y, int w, int h, int frame=0) { // Tiles, but doesn't take viewports in mind, so when textures stick out, so be it.
             for (int ix = x; ix < x + w; ix+=img.Width)
                 for (int iy = y; iy < y + h; iy+=img.Height)
