@@ -15,6 +15,7 @@
 #region Yeah, we're using this.... Any questions?
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -23,8 +24,8 @@ using UseJCR6;
 
 namespace TrickyUnits { 
 
-#region image
-class TQMGImage{
+    #region image
+    class TQMGImage{
         #region Image declarations
         readonly Class_TQMG Mama;
         readonly Texture2D[] tex;
@@ -150,10 +151,25 @@ class TQMGImage{
 
         #region Welcome to the SHOW
         Vector2 dc = new Vector2();
+        Rectangle rc = new Rectangle();
         public void Draw(int x,int y, int Frame = 0) {
+            try {
+                dc.X = x;
+                dc.Y = y;
+                //TQMG.Log($"Draw({x},{y},{Frame});");
+                Mama.spriteBatch.Draw(tex[Frame], dc, Mama.mColor);
+            } catch (Exception Ex) {
+                TQMG.Error($"Draw({x},{y},{Frame}): {Ex.Message} in {Ex.Source}\n\n{Ex.StackTrace}");
+            }
+        }
+        public void Draw(int x,int y, int w, int h, int Frame = 0) {
+            rc.X = x;
+            rc.Y = y;
+            rc.Width = w;
+            rc.Height = h;
             dc.X = x;
             dc.Y = y;
-            Mama.spriteBatch.Draw(tex[Frame], dc, Mama.mColor);
+            Mama.spriteBatch.Draw(tex[Frame], dc,rc, Mama.mColor);
         }
         #endregion
 
@@ -170,56 +186,72 @@ class TQMGImage{
         }
         readonly TQMGFont Ouwe;
         List<Letter> FSTRING = new List<Letter>();
+        readonly string hastext; // debug purposes!
 
         readonly public int Width;
         readonly public int Height;
 
         public TQMGText(TQMGFont parentfont, string text) {
             var x = 0;
+            hastext = text;
             Height = 0;
             Ouwe = parentfont;
-            for(int i = 0; i < text.Length; i++) {
-                var l = new Letter();
-                var c = (byte)text[i];
-                int w=0, h=0;
-                if (c == 32)
-                    x += Height/2;
-                else {
-                    l.x = x;
-                    Ouwe.fimg.IRequire(c, $"{Ouwe.jcrdir}{c}.png");
-                    if (Ouwe.fimg.IGot(c)) {
-                        Ouwe.fimg.IGetF(c, ref w, ref h);
+            TQMG.Log($"Text({text});");
+            for (int i = 0; i < text.Length; i++) {
+                try {
+                    var l = new Letter();
+                    var c = (byte)text[i];
+                    int w = 0, h = 0;
+                    if (c == 32)
+                        x += Height / 2;
+                    else {
                         l.x = x;
-                        l.index = c;
-                        TQMG.Log($"Char {text[i]} ({c}) listed in. >> x={x}; w={w}; h={h}");
-                        x += w+1;
-                        Width = x;
-                        if (Height < h) Height = h;
-                        FSTRING.Add(l);
+                        Ouwe.fimg.IRequire(c, $"{Ouwe.jcrdir}{c}.png");
+                        if (Ouwe.fimg.IGot(c)) {
+                            Ouwe.fimg.IGetF(c, ref w, ref h);
+                            l.x = x;
+                            l.index = c;
+                            TQMG.Log($"Pos {i}/{text.Length}; Char {text[i]} ({c}) listed in. >> x={x}; w={w}; h={h}");
+                            x += w + 1;
+                            Width = x;
+                            if (Height < h) Height = h;
+                            FSTRING.Add(l);
+                        }
                     }
+                } catch (Exception Ex) {
+                    TQMG.Error($"TQMGText(<parentfont>,\n{text}\n);\n{Ex.Message}");
+
                 }
             }
+            TQMG.Log($"/Text({text});");
         }
 
         public void Draw(int x,int y,TQMG_TextAlign align=TQMG_TextAlign.Left) {
-            var M = Ouwe.Mama;
-            var bx = 0;
-            switch (align) {
-                case TQMG_TextAlign.Left:
-                    bx = 0;
-                    break;
-                case TQMG_TextAlign.Right:
-                    bx = -Width;
-                    break;
-                case TQMG_TextAlign.Center:
-                    bx = -(Width / 2);
-                    break;
-                default:
-                    Ouwe.Mama.Error("Unknown alignment code!");
-                    return;
-            }
-            foreach (Letter L in FSTRING) {
-                Ouwe.fimg.Draw(bx + x + L.x, y, L.index);
+            try {
+                var M = Ouwe.Mama;
+                var bx = 0;
+                if (FSTRING.Count == 0) return;
+                TQMG.Log($"<DrawText Content='{hastext}'>");
+                switch (align) {
+                    case TQMG_TextAlign.Left:
+                        bx = 0;
+                        break;
+                    case TQMG_TextAlign.Right:
+                        bx = -Width;
+                        break;
+                    case TQMG_TextAlign.Center:
+                        bx = -(Width / 2);
+                        break;
+                    default:
+                        Ouwe.Mama.Error("Unknown alignment code!");
+                        return;
+                }
+                foreach (Letter L in FSTRING) {
+                    Ouwe.fimg.Draw(bx + x + L.x, y, L.index);
+                }
+                TQMG.Log("</DrawText>");
+            } catch (Exception Ex) {
+                TQMG.Error($"{Ex.Message}\n\n{Ex.StackTrace}");
             }
         }
 
@@ -256,10 +288,7 @@ class TQMGImage{
     }
 
     #endregion
-
-
-
-
+  
     #region core
     class Class_TQMG {
       
@@ -308,6 +337,194 @@ class TQMGImage{
     }
     #endregion
 
+    #region Keyboard stuff
+    /// <summary>
+    /// Class containing a few quick key features, MonoGame failed to provide!
+    /// I need to note, this has been taken with an standard US QWERTY keyboard in mind, so other keyboards may fail!
+    /// </summary>
+    static class TQMGKey {
+        static KeyboardState last;
+        static KeyboardState yet;
+        static Dictionary<Keys, char> UnShift = new Dictionary<Keys, char>();
+        static Dictionary<Keys, char> Shift = new Dictionary<Keys, char>();
+        static Dictionary<Keys, byte> Lock = new Dictionary<Keys, byte>(); // 0 = nothing, 1 = Caps Lock, 2 = Num Lock
+
+        static Array values = Enum.GetValues(typeof(Keys));
+
+        static TQMGKey() {
+            #region letters!
+            Debug.WriteLine("TQMGKey: Init letters");
+            UnShift[Keys.A] = 'a';
+            UnShift[Keys.B] = 'b';
+            UnShift[Keys.C] = 'c';
+            UnShift[Keys.D] = 'd';
+            UnShift[Keys.E] = 'e';
+            UnShift[Keys.F] = 'f';
+            UnShift[Keys.G] = 'g';
+            UnShift[Keys.H] = 'h';
+            UnShift[Keys.I] = 'i';
+            UnShift[Keys.J] = 'J';
+            UnShift[Keys.K] = 'k';
+            UnShift[Keys.L] = 'l';
+            UnShift[Keys.M] = 'm';
+            UnShift[Keys.N] = 'n';
+            UnShift[Keys.O] = 'o';
+            UnShift[Keys.P] = 'p';
+            UnShift[Keys.Q] = 'q';
+            UnShift[Keys.R] = 'r';
+            UnShift[Keys.S] = 's';
+            UnShift[Keys.T] = 't';
+            UnShift[Keys.U] = 'u';
+            UnShift[Keys.V] = 'v';
+            UnShift[Keys.W] = 'w';
+            UnShift[Keys.X] = 'x';
+            UnShift[Keys.Y] = 'y';
+            UnShift[Keys.Z] = 'z';
+            foreach(Keys k in UnShift.Keys) { // I can do this now as the letters come first. I did so for a reason :P
+                Shift[k] = UnShift[k].ToString().ToUpper()[0];
+                Lock[k] = 1; // Caps lock means to upper
+            }
+            #endregion
+
+            #region WhiteSpace
+            UnShift[Keys.Space] = ' ';
+            Shift[Keys.Space] = ' ';
+            UnShift[Keys.Enter] = '\n';
+            Shift[Keys.Enter] = '\n';
+            UnShift[Keys.Tab] = '\t';
+            Shift[Keys.Tab] = '\t';
+            #endregion
+
+            #region Numberic keyboard
+            Shift[Keys.NumPad0] = '0';
+            Shift[Keys.NumPad1] = '1';
+            Shift[Keys.NumPad2] = '2';
+            Shift[Keys.NumPad3] = '3';
+            Shift[Keys.NumPad4] = '4';
+            Shift[Keys.NumPad5] = '5';
+            Shift[Keys.NumPad6] = '6';
+            Shift[Keys.NumPad7] = '7';
+            Shift[Keys.NumPad8] = '8';
+            Shift[Keys.NumPad9] = '9';
+            Lock[Keys.NumPad0] = 2;
+            Lock[Keys.NumPad1] = 2;
+            Lock[Keys.NumPad2] = 2;
+            Lock[Keys.NumPad3] = 2;
+            Lock[Keys.NumPad4] = 2;
+            Lock[Keys.NumPad5] = 2;
+            Lock[Keys.NumPad6] = 2;
+            Lock[Keys.NumPad7] = 2;
+            Lock[Keys.NumPad8] = 2;
+            Lock[Keys.NumPad9] = 2;
+            #endregion
+
+            #region TopLine Numbers
+            UnShift[Keys.D1] = '1';
+            UnShift[Keys.D2] = '2';
+            UnShift[Keys.D3] = '3';
+            UnShift[Keys.D4] = '4';
+            UnShift[Keys.D5] = '5';
+            UnShift[Keys.D6] = '6';
+            UnShift[Keys.D7] = '7';
+            UnShift[Keys.D8] = '8';
+            UnShift[Keys.D9] = '9';
+            UnShift[Keys.D0] = '0';
+            Shift[Keys.D1] = '!';
+            Shift[Keys.D2] = '@';
+            Shift[Keys.D3] = '#';
+            Shift[Keys.D4] = '$';
+            Shift[Keys.D5] = '%';
+            Shift[Keys.D6] = '^';
+            Shift[Keys.D7] = '&';
+            Shift[Keys.D8] = '*';
+            Shift[Keys.D9] = '(';
+            Shift[Keys.D0] = ')';
+            #endregion
+                        
+            #region Special Characters 123 line
+            UnShift[Keys.OemTilde] = '`';
+            UnShift[Keys.OemMinus] = '-';
+            UnShift[Keys.OemPlus] = '=';
+            UnShift[Keys.OemPipe] = '\\';
+            Shift[Keys.OemTilde] = '~';
+            Shift[Keys.OemMinus] = '_';
+            Shift[Keys.OemPlus] = '+';
+            Shift[Keys.OemPipe] = '|';
+            #endregion
+
+            #region Special Characters QWERTY line
+            UnShift[Keys.OemOpenBrackets] = '[';
+            UnShift[Keys.OemCloseBrackets] = ']';
+            Shift[Keys.OemOpenBrackets] = '{';
+            Shift[Keys.OemCloseBrackets] = '}';
+            #endregion
+
+            #region Special Characters ASDFG line
+            UnShift[Keys.OemSemicolon] = ';';
+            UnShift[Keys.OemQuotes] = '\'';
+            Shift[Keys.OemSemicolon] = ':';
+            Shift[Keys.OemQuotes] = '"';
+            #endregion
+
+            #region Special Characters ZXCV line
+            UnShift[Keys.OemComma] = ',';
+            UnShift[Keys.OemPeriod] = '.';
+            UnShift[Keys.OemQuestion] = '/';
+            Shift[Keys.OemComma] = '<';
+            Shift[Keys.OemPeriod] = '>';
+            Shift[Keys.OemQuestion] = '?';
+            #endregion
+
+
+
+            #region Fill 0 to all unused locks (error prevention)... MUST ALWAYS BE THE LAST ACTION!
+            foreach (Keys k in values)
+                if (!Lock.ContainsKey(k)) Lock[k] = 0;
+            #endregion
+
+        }
+
+        static public void Start(KeyboardState state) {
+            last = yet;
+            yet = state;
+        }
+
+        /// <summary>
+        /// Returns a key pressed. Returns F19 (a key hardly in existence) when nothing has been pressed (since C# just requires to return something)
+        /// </summary>
+        static public Keys GetKey() {
+            
+            foreach(Keys k in values) {
+                if (yet.IsKeyDown(k) && !last.IsKeyDown(k)) return k;
+            }
+            return Keys.F19;
+        }
+
+        /// <summary>
+        /// Returns 'true' if a key has been hit (but not if it's been held)
+        /// </summary>
+        /// <param name="k">Key code</param>
+        /// <returns>True if key is hit.</returns>
+        static public bool Hit(Keys k) => yet.IsKeyDown(k) && !last.IsKeyDown(k);
+
+        /// <summary>
+        /// Gets character. Please note this routine can be rather slow, should only be used when typing is really needed!
+        /// </summary>
+        /// <returns>Returns value of character, and returns character 0 if none have been received</returns>
+        public static char GetChar() {
+            foreach (Keys k in values) {
+                if (Hit(k)) {
+                    var shift = yet.IsKeyDown(Keys.LeftShift) || yet.IsKeyDown(Keys.RightShift) || (yet.CapsLock && Lock[k] == 1) || (yet.NumLock && Lock[k] == 2);
+                    if (shift && Shift.ContainsKey(k)) return Shift[k];
+                    if (UnShift.ContainsKey(k)) return UnShift[k];
+                }
+            }
+            return (char)0; 
+        }
+    }
+    #endregion
+
+
     #region Link ups....
     /* The class above is only available as a 'regular' class in case you want more than one object for whatever reason. 
      * Since I rarely expect to need this the class below just serves as the main thing.
@@ -315,6 +532,7 @@ class TQMGImage{
     static class TQMG {
         static Class_TQMG me;
         public delegate void dLog(string msg); static dLog mLog = delegate { };
+        static public dLog Error = delegate(string msg){ Log($"Error! {msg}"); };
         static public void Init(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) { me = new Class_TQMG( agfxm,  agfxd,  aSB, ajcr); }
         static public TQMGFont GetFont(string dir) => me.GetFont(dir);
         static public TQMGImage GetImage(string imagefile) => me.GetImage(imagefile);
@@ -333,6 +551,29 @@ class TQMGImage{
                 for (int iy = y; iy < y + h; iy+=img.Height)
                     img.Draw(ix, iy,frame);
         }
+
+        /// <summary>
+        /// Simple tile
+        /// </summary>
+        static public void SimpleTile(TQMGImage img, int x, int y, int w, int h, int frame = 0) // Any hotspots are not yet taken into account yet.
+        {
+            /*
+            var overx = w % img.Width;
+            var overy = h % img.Height;
+            var texw = img.Width;
+            var texh = img.Height;
+            for (int ix = x; ix < x + w; ix += img.Width)
+                for (int iy = y; iy < y + h; iy += img.Height) {
+                    var iw = texw;
+                    var ih = texh;
+                    if (ix + iw > w) iw = overx;
+                    if (iy + ih > h) ih = overy;
+                    img.Draw(ix, iy, iw,ih, frame);
+                }
+                */
+            img.Draw(x, y, w, h, frame);
+        }
+
         static public void Color(byte r, byte g, byte b) {
             me.mColor.R = r;
             me.mColor.G = g;
@@ -385,7 +626,7 @@ class TQMGImage{
 
         static public void Log(string msg) {
 #if qdebuglog
-            TeddyEdit.ProjectData.Log(msg);
+            mLog(msg);
 #endif
         }
     }
