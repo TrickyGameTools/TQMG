@@ -284,6 +284,11 @@ namespace TrickyUnits {
             var txt = Text(text);
             txt.Draw(x, y, align);
         }
+
+        public int TextWidth(string text) {
+            var txt = Text(text);
+            return txt.Width;
+        }
         
     }
 
@@ -499,6 +504,13 @@ namespace TrickyUnits {
             }
             return Keys.F19;
         }
+
+        /// <summary>
+        /// Quick way to check if a key is being held or not (on the moment the last TQMGKey.Start was called, that is)
+        /// </summary>
+        /// <param name="k">Key code</param>
+        /// <returns>True if key was indeed held</returns>
+        static public bool Held(Keys k) => yet.IsKeyDown(k);
 
         /// <summary>
         /// Returns 'true' if a key has been hit (but not if it's been held)
