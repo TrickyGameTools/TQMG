@@ -586,11 +586,26 @@ namespace TrickyUnits {
             img.Draw(x, y, w, h, frame);
         }
 
+        /// <summary>
+        /// Sets Color
+        /// </summary>
+        /// <param name="r">red</param>
+        /// <param name="g">green</param>
+        /// <param name="b">blue</param>
         static public void Color(byte r, byte g, byte b) {
             me.mColor.R = r;
             me.mColor.G = g;
             me.mColor.B = b;            
         }
+
+        /// <summary>
+        /// Sets Color
+        /// </summary>
+        /// <param name="c">Full color struct (alpha value will (if set) be ignored!)</param>
+        static public void Color(Microsoft.Xna.Framework.Color c) {
+            Color(c.R, c.G, c.B);
+        }
+
         /// <summary>
         /// Sets the alpha value. 
         /// </summary>
@@ -602,7 +617,7 @@ namespace TrickyUnits {
         /// Sets the alpha value.
         /// </summary>
         /// <param name="alpha">Alpha as a float number from 0 till 1 (will be recalculated into the 0 till 255 scale)</param>
-        static public void SetAlpha(float alpha) {
+        static public void SetAlphaFloat(float alpha) {
             // Although I'm not fully sure if Kthura will be converted to C#, but if it will be, I will NEED this function!
             // The if routines are not meant to cover up bad usage (although that was just a nice side effect), but rather to catch up rounding errors. They could give unintential yet funny unwanted results.
             if (alpha < 0) {
@@ -633,6 +648,13 @@ namespace TrickyUnits {
             mRectangle.Width = w;
             mRectangle.Height = h;
             DrawRectangle(mRectangle);
+        }
+
+        public static void DrawLineRect(int x,int y, int w, int h) {
+            DrawRectangle(x, y, w, 1); // top
+            DrawRectangle(x, y + h, w, 1); // bottom
+            DrawRectangle(x, y, 1, h); // left
+            DrawRectangle(x + w, y, 1, h); // right
         }
         #endregion
 
