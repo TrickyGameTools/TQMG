@@ -6,8 +6,9 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL was not
 // distributed with this file, You can obtain one at
 // http://mozilla.org/MPL/2.0/.
-// Version: 19.03.19
+// Version: 19.04.04
 // EndLic
+
 
 #undef qdebuglog
 
@@ -317,7 +318,7 @@ namespace TrickyUnits {
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
-            MKL.Version("TQMG - TQMG.cs","19.03.19");
+            MKL.Version("TQMG - TQMG.cs","19.04.04");
             #endregion
 
             #region TQMG core setup
