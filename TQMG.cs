@@ -95,6 +95,7 @@ namespace TrickyUnits {
             tex = new Texture2D[count];
             for (int i=0;i<count;i++) {
                 var bt = Mama.jcr.ReadFile($"{b}{files[i]}");
+                if (bt == null) throw new Exception($"JCR6 Error: {JCR6.JERROR}");
                 tex[0] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
                 bt.Close();
             }
@@ -122,6 +123,10 @@ namespace TrickyUnits {
                 return hght;
             }
         }
+
+        public int FrWidth(int idx) => tex[idx].Width;
+
+
         #endregion
 
 
@@ -132,9 +137,13 @@ namespace TrickyUnits {
             try {
                 if (tex[idx] != null) return;
                 TQMG.Log($"IRequire({idx},\"{entry}\");");
-                var bt = Mama.jcr.ReadFile(entry);                
-                tex[idx] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
-                bt.Close();
+                var bt = Mama.jcr.ReadFile(entry);
+                if (bt == null)
+                    Debug.WriteLine($"ERROR! {JCR6.JERROR} from IRequire({idx},\"{entry}\");");
+                else {
+                    tex[idx] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
+                    bt.Close();
+                }
             } catch (Exception e) {
                 Mama.Error($"System error: {e.Message}");
             }
@@ -172,6 +181,15 @@ namespace TrickyUnits {
             dc.Y = y;
             Mama.spriteBatch.Draw(tex[Frame], dc,rc, Mama.mColor);
         }
+        public void Draw(int ix,int iy, int x, int y, int w, int h, int Frame = 0) {
+            rc.X = ix;
+            rc.Y = iy;
+            rc.Width = w;
+            rc.Height = h;
+            dc.X = x;
+            dc.Y = y;
+            Mama.spriteBatch.Draw(tex[Frame], dc, rc, Mama.mColor);
+        }
         #endregion
 
     }
@@ -205,6 +223,8 @@ namespace TrickyUnits {
                     int w = 0, h = 0;
                     if (c == 32)
                         x += Height / 2;
+                    else if (c == 9)
+                        x += x % (Height * 3);
                     else {
                         l.x = x;
                         Ouwe.fimg.IRequire(c, $"{Ouwe.jcrdir}{c}.png");
@@ -256,6 +276,20 @@ namespace TrickyUnits {
             }
         }
 
+        /// <summary>
+        /// Will draw text like normally, but stop drawing if the text goes beyond the maximum width
+        /// </summary>
+        /// <param name="x">x</param>
+        /// <param name="y">u</param>
+        /// <param name="maxw">maximum width</param>
+        public void DrawMax(int x,int y, int maxw) {
+            foreach (Letter L in FSTRING) {
+                if (L.x + Ouwe.fimg.FrWidth(L.index) < maxw)
+                    Ouwe.fimg.Draw(x + L.x, y, L.index);
+            }
+
+        }
+
     }
 
     class TQMGFont{
@@ -284,6 +318,11 @@ namespace TrickyUnits {
         public void DrawText(string text, int x, int y, TQMG_TextAlign align = TQMG_TextAlign.Left) {
             var txt = Text(text);
             txt.Draw(x, y, align);
+        }
+
+        public void DrawMax(string text, int x, int y, int maxwidth) {
+            var txt = Text(text);
+            txt.DrawMax(x, y, maxwidth);
         }
 
         public int TextWidth(string text) {
@@ -550,6 +589,12 @@ namespace TrickyUnits {
         static public TQMGFont GetFont(string dir) => me.GetFont(dir);
         static public TQMGImage GetImage(string imagefile) => me.GetImage(imagefile);
         static public TQMGImage GetImage(QuickStream stream, bool close=true) => me.GetImage(stream,close);
+        static public TQMGImage GetImage(TJCRDIR JCR, string bundle, int max) => new TQMGImage(me, JCR, bundle, max);
+        static public TQMGImage GetBundle(TJCRDIR JCR, string bundle) => GetImage(JCR, bundle, 0);
+        static public TQMGImage GetBundle(string JCRF,string bundle = "") {
+            var JCR = JCR6.Dir(JCRF);
+            return GetBundle(JCR, bundle);
+        }
         static public int ScrWidth => me.ScrHeight;
         static public int ScrHeight => me.ScrHeight;
 
@@ -570,21 +615,11 @@ namespace TrickyUnits {
         /// </summary>
         static public void SimpleTile(TQMGImage img, int x, int y, int w, int h, int frame = 0) // Any hotspots are not yet taken into account yet.
         {
-            /*
-            var overx = w % img.Width;
-            var overy = h % img.Height;
-            var texw = img.Width;
-            var texh = img.Height;
-            for (int ix = x; ix < x + w; ix += img.Width)
-                for (int iy = y; iy < y + h; iy += img.Height) {
-                    var iw = texw;
-                    var ih = texh;
-                    if (ix + iw > w) iw = overx;
-                    if (iy + ih > h) ih = overy;
-                    img.Draw(ix, iy, iw,ih, frame);
-                }
-                */
             img.Draw(x, y, w, h, frame);
+        }
+
+        static public void Tile(TQMGImage img, int ix, int iy,int x, int y, int w, int h, int frame = 0) {
+            img.Draw(ix, iy, x, y, w, h, frame);
         }
 
         /// <summary>
@@ -649,6 +684,20 @@ namespace TrickyUnits {
             mRectangle.Width = w;
             mRectangle.Height = h;
             DrawRectangle(mRectangle);
+        }
+
+        /// <summary>
+        /// Draws a rect given on the coordinates, and not on the given width and height.
+        /// </summary>
+        /// <param name="startx"></param>
+        /// <param name="starty"></param>
+        /// <param name="endx"></param>
+        /// <param name="endy"></param>
+        public static void DrRect(int startx, int starty, int endx, int endy) {
+            var mr = new Rectangle();
+            if (startx == endx) { mr.X = startx; mr.Width = 0; } else if (startx < endx) { mr.X = startx; mr.Width = endx - startx; } else { mr.X = endx; mr.Width = startx - endx; }
+            if (starty == endy) { mr.Y = starty; mr.Height = 0; } else if (starty < endy) { mr.Y = starty; mr.Height = endy - starty; } else { mr.Y = endy; mr.Height = starty - endy; }
+            DrawRectangle(mr);
         }
 
         public static void DrawLineRect(int x,int y, int w, int h) {
