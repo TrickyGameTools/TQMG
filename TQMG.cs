@@ -6,8 +6,9 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL was not
 // distributed with this file, You can obtain one at
 // http://mozilla.org/MPL/2.0/.
-// Version: 19.04.04
+// Version: 19.04.20
 // EndLic
+
 
 
 #undef qdebuglog
@@ -129,6 +130,12 @@ namespace TrickyUnits {
 
         #endregion
 
+        #region Quick Hotspot
+        public void HotCenter() { hotx = Width / 2; hoty = Height / 2; }
+        public void HotBottomCenter() { hotx = Width / 2; hoty = Height; }
+        public void HotTopCenter() { hotx = Width / 2; hoty = 0; }
+        #endregion
+
 
         #region Font only stuff
         public void IRequire(int idx,string entry) {
@@ -190,6 +197,18 @@ namespace TrickyUnits {
             dc.Y = y;
             Mama.spriteBatch.Draw(tex[Frame], dc, rc, Mama.mColor);
         }
+
+        public void XDraw(int x, int y, int Frame = 0) {
+            var vhot = new Vector2(hotx, hoty);
+            var vpos = new Vector2(x, y);
+            var w = (int)(Width * Mama.fScaleX);
+            var h = (int)(Height * Mama.fScaleY);
+            var drect = new Rectangle(x, y, w, h);
+            Matrix m;
+            //Matrix.CreateScale(Mama.fScaleX, Mama.fScaleY, 1, out m);
+            //Mama.spriteBatch.Draw(tex[Frame], vpos, drect, null, vhot, Mama.rotation, null, Mama.mColor);
+            Mama.spriteBatch.Draw(tex[Frame], drect, null, Mama.mColor, Mama.rotation, vhot, SpriteEffects.None, 1);
+        }
         #endregion
 
     }
@@ -209,9 +228,12 @@ namespace TrickyUnits {
 
         readonly public int Width;
         readonly public int Height;
+        readonly bool monoforce = false;
+        int maxwidth = 0;
 
-        public TQMGText(TQMGFont parentfont, string text) {
+        public TQMGText(TQMGFont parentfont, string text, bool forcemono=false) {
             var x = 0;
+            monoforce = forcemono;
             hastext = text;
             Height = 0;
             Ouwe = parentfont;
@@ -223,6 +245,7 @@ namespace TrickyUnits {
                     int w = 0, h = 0;
                     if (c == 32)
                         x += Height / 2;
+                    else if (c==13) { }
                     else if (c == 9)
                         x += x % (Height * 3);
                     else {
@@ -230,6 +253,10 @@ namespace TrickyUnits {
                         Ouwe.fimg.IRequire(c, $"{Ouwe.jcrdir}{c}.png");
                         if (Ouwe.fimg.IGot(c)) {
                             Ouwe.fimg.IGetF(c, ref w, ref h);
+                            if (forcemono) {
+                                if (maxwidth < w) maxwidth = w;
+                                w = maxwidth;
+                            }
                             l.x = x;
                             l.index = c;
                             TQMG.Log($"Pos {i}/{text.Length}; Char {text[i]} ({c}) listed in. >> x={x}; w={w}; h={h}");
@@ -276,6 +303,8 @@ namespace TrickyUnits {
             }
         }
 
+        
+
         /// <summary>
         /// Will draw text like normally, but stop drawing if the text goes beyond the maximum width
         /// </summary>
@@ -298,6 +327,8 @@ namespace TrickyUnits {
         readonly bool ok;
         readonly public TQMGImage fimg;
         public bool crashnothave = false;
+        internal int largestw = 0;
+
       
 
         public TQMGFont(Class_TQMG parent, string dir) {
@@ -314,9 +345,9 @@ namespace TrickyUnits {
             fimg = new TQMGImage(Mama, 256, true); // For now ASCII only... more may be supported later.
         }
 
-        public TQMGText Text(string text) => new TQMGText(this, text);
-        public void DrawText(string text, int x, int y, TQMG_TextAlign align = TQMG_TextAlign.Left) {
-            var txt = Text(text);
+        public TQMGText Text(string text, bool forcemono=false) => new TQMGText(this, text, forcemono);
+        public void DrawText(string text, int x, int y, TQMG_TextAlign align = TQMG_TextAlign.Left,bool forcemono=false) {
+            var txt = Text(text,forcemono);
             txt.Draw(x, y, align);
         }
 
@@ -344,6 +375,9 @@ namespace TrickyUnits {
         readonly public GraphicsDevice gfxd;
         public bool CRASH = false;
         public string LastError { get; private set; } = "Ok";
+        public int ScaleX = 1000, ScaleY = 1000;
+        public float fScaleX => (float)ScaleX / 1000;
+        public float fScaleY => (float)ScaleY / 1000;
 
         public Color mColor = new Color(255, 255, 255);
         public float rotation = 0;
@@ -357,7 +391,7 @@ namespace TrickyUnits {
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
-            MKL.Version("TQMG - TQMG.cs","19.04.04");
+            MKL.Version("TQMG - TQMG.cs","19.04.20");
             #endregion
 
             #region TQMG core setup
@@ -595,7 +629,7 @@ namespace TrickyUnits {
             var JCR = JCR6.Dir(JCRF);
             return GetBundle(JCR, bundle);
         }
-        static public int ScrWidth => me.ScrHeight;
+        static public int ScrWidth => me.ScrWidth;
         static public int ScrHeight => me.ScrHeight;
 
         /// <summary>
@@ -713,6 +747,11 @@ namespace TrickyUnits {
             mLog(msg);
 #endif
         }
+
+        static public void RotateRAD(float rad) => me.rotation = rad;
+        static public void RotateDEG(int deg) => me.rotation = (float)(deg*(Math.PI/180));
+        static public void Scale(int ascale) => Scale(ascale, ascale);
+        static public void Scale(int scx, int scy) { me.ScaleX = scx; me.ScaleY = scy; }
     }
     #endregion
 
@@ -720,3 +759,4 @@ namespace TrickyUnits {
 
 
 }
+
