@@ -15,7 +15,7 @@
 #undef qdebuglog
 
 // Since some bugs came up while I was coding Kthura, this was the easiest way to go....
-#define DebugInKthura
+#undef DebugInKthura
 
 
 #region Yeah, we're using this.... Any questions?
