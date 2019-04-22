@@ -6,12 +6,16 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL was not
 // distributed with this file, You can obtain one at
 // http://mozilla.org/MPL/2.0/.
-// Version: 19.04.20
+// Version: 19.04.22
 // EndLic
 
 
 
+
 #undef qdebuglog
+
+// Since some bugs came up while I was coding Kthura, this was the easiest way to go....
+#define DebugInKthura
 
 
 #region Yeah, we're using this.... Any questions?
@@ -22,6 +26,12 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using UseJCR6;
+
+#if DebugInKthura
+using KthuraEdit;
+using KthuraEdit.Stages;
+#endif
+
 #endregion
 
 namespace TrickyUnits { 
@@ -83,8 +93,12 @@ namespace TrickyUnits {
         public TQMGImage(Class_TQMG parent, TJCRDIR JCR,string bundle,int max) {
             Mama = parent;
             var b = bundle.ToUpper();
+#if DebugInKthura
+            DBG.Log($"Trying to load bunde: {bundle} (max = {max})");
+            if (max != 0) { Console.Beep(60, 500); DBG.Log($"HEY! Max is not zero! In stead it's {max}!"); }
+#endif
             var fls = new List<string>();
-            if (qstr.Suffixed(b,"/")) b += "/";
+            if (!qstr.Suffixed(b,"/")) b += "/";
             var count = 0;
             foreach(string en in JCR.Entries.Keys) {
                 if (qstr.Prefixed(en,b) && (max==0 || count < max) && (qstr.Suffixed(en,".PNG") || qstr.Suffixed(en,".JPG"))) {
@@ -95,9 +109,9 @@ namespace TrickyUnits {
             var files = fls.ToArray();
             tex = new Texture2D[count];
             for (int i=0;i<count;i++) {
-                var bt = Mama.jcr.ReadFile($"{b}{files[i]}");
+                var bt = JCR.ReadFile($"{files[i]}");
                 if (bt == null) throw new Exception($"JCR6 Error: {JCR6.JERROR}");
-                tex[0] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
+                tex[i] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
                 bt.Close();
             }
         }
@@ -379,7 +393,7 @@ namespace TrickyUnits {
         public float fScaleX => (float)ScaleX / 1000;
         public float fScaleY => (float)ScaleY / 1000;
 
-        public Color mColor = new Color(255, 255, 255);
+        public Color mColor = new Color(255, 255, 255, 255);
         public float rotation = 0;
         //public Rectangle srcRec=null;
 
@@ -391,7 +405,7 @@ namespace TrickyUnits {
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
-            MKL.Version("TQMG - TQMG.cs","19.04.20");
+            MKL.Version("TQMG - TQMG.cs","19.04.22");
             #endregion
 
             #region TQMG core setup
@@ -672,7 +686,7 @@ namespace TrickyUnits {
         /// Sets Color
         /// </summary>
         /// <param name="c">Full color struct (alpha value will (if set) be ignored!)</param>
-        static public void Color(Microsoft.Xna.Framework.Color c) {
+        static public void Color(Color c) {
             Color(c.R, c.G, c.B);
         }
 
@@ -759,4 +773,5 @@ namespace TrickyUnits {
 
 
 }
+
 
