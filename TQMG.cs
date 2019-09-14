@@ -47,7 +47,7 @@ namespace TrickyUnits {
         #endregion
 
 
-        #region Image Construction Site
+        #region Image Construction Set
         public TQMGImage(Class_TQMG parent, TJCRDIR JCR, string file)
         {
             parent.Error("Ok");
@@ -56,7 +56,15 @@ namespace TrickyUnits {
             tex = new Texture2D[1];
             tex[0] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
             bt.Close();
-            if (tex == null) parent.Error($"I could not load {file} from JCR resource");
+            if (tex == null) { parent.Error($"I could not load {file} from JCR resource"); return; }
+            var hotfile = $"{qstr.StripExt(file)}.hot";
+            if (JCR.Exists(hotfile)) {
+                var str = JCR.LoadString(hotfile).Trim();
+                var spl = str.Split(',');
+                if (spl.Length < 2) { parent.Error($"Invalid data in hotpot file {hotfile} for {file}"); return; }
+                hotx = qstr.ToInt(spl[0]);
+                hoty = qstr.ToInt(spl[1]);
+            }
         }
 
         public TQMGImage(Class_TQMG parent, string JCRFile, string file) {
@@ -141,6 +149,7 @@ namespace TrickyUnits {
 
         public int FrWidth(int idx) => tex[idx].Width;
 
+        public int Frames => tex.Length;
 
         #endregion
 
@@ -150,6 +159,7 @@ namespace TrickyUnits {
         public void HotTopCenter() { hotx = Width / 2; hoty = 0; }
         #endregion
 
+        
 
         #region Font only stuff
         public void IRequire(int idx,string entry) {
@@ -188,7 +198,7 @@ namespace TrickyUnits {
                 dc.X = x;
                 dc.Y = y;
                 //TQMG.Log($"Draw({x},{y},{Frame});");
-                Mama.spriteBatch.Draw(tex[Frame], dc, Mama.mColor);
+                Mama.spriteBatch.Draw(tex[Frame], dc, Mama.mColor);                
             } catch (Exception Ex) {
                 TQMG.Error($"Draw({x},{y},{Frame}): {Ex.Message} in {Ex.Source}\n\n{Ex.StackTrace}");
             }
@@ -218,7 +228,7 @@ namespace TrickyUnits {
             var w = (int)(Width * Mama.fScaleX);
             var h = (int)(Height * Mama.fScaleY);
             var drect = new Rectangle(x, y, w, h);
-            Matrix m;
+            //Matrix m;
             //Matrix.CreateScale(Mama.fScaleX, Mama.fScaleY, 1, out m);
             //Mama.spriteBatch.Draw(tex[Frame], vpos, drect, null, vhot, Mama.rotation, null, Mama.mColor);
             Mama.spriteBatch.Draw(tex[Frame], drect, null, Mama.mColor, Mama.rotation, vhot, SpriteEffects.None, 1);
@@ -349,7 +359,11 @@ namespace TrickyUnits {
             Mama = parent;
             jcrdir = dir.ToUpper();
             if (!qstr.Suffixed(jcrdir,"/")) jcrdir += "/";
-            ok = false;            
+            ok = false;      
+            if (Mama.jcr==null) {
+                Debug.WriteLine("HEY! JCR is null! how could this happen? Anyway expect an error upon reading this font!");
+                for (int i = 0; i < 20; i++) Console.Beep();
+            }
             foreach(string ent in Mama.jcr.Entries.Keys) {
                 ok = ok || (qstr.Prefixed(ent, jcrdir) && qstr.Suffixed(ent,".PNG"));
             }
@@ -402,6 +416,7 @@ namespace TrickyUnits {
             LastError = em;
         }
 
+        readonly public Viewport OriginalViewport;
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
@@ -413,6 +428,7 @@ namespace TrickyUnits {
             gfxd = agfxd;
             spriteBatch = aSB;
             jcr = ajcr;
+            OriginalViewport = gfxm.GraphicsDevice.Viewport;
             #endregion
         }
 
@@ -690,6 +706,10 @@ namespace TrickyUnits {
             Color(c.R, c.G, c.B);
         }
 
+        static public Color GetColor() {
+            return me.mColor;
+        }
+
         /// <summary>
         /// Sets the alpha value. 
         /// </summary>
@@ -697,6 +717,9 @@ namespace TrickyUnits {
         static public void SetAlpha(byte alpha) {
             me.mColor.A = alpha;
         }
+
+        static public byte GetAlpha() => me.mColor.A;
+
         /// <summary>
         /// Sets the alpha value.
         /// </summary>
@@ -712,6 +735,19 @@ namespace TrickyUnits {
                 me.mColor.A = (byte)(255.0 * alpha);
             }
         }
+
+        static public Viewport originalviewport => me.OriginalViewport;
+        static public void ViewPort(Viewport vp) {
+            me.gfxm.GraphicsDevice.Viewport = vp;
+        }
+
+        static public void ViewPort(int x, int y, int w, int h) {
+            var vp = new Viewport(x, y, w, h);
+            ViewPort(vp);
+        }
+
+        static public Viewport GetViewPort => me.gfxm.GraphicsDevice.Viewport;
+        static public void ViewPortFull() => ViewPort(originalviewport);
 
 
 
