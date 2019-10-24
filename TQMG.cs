@@ -148,6 +148,12 @@ namespace TrickyUnits {
             tex[0] = Texture2D.FromStream(Mama.gfxd, stream.GetStream());
             if (close) stream.Close();
         }
+
+        public TQMGImage(Class_TQMG parent,int width, int height, int Frames = 1) {
+            Mama = parent;
+            tex = new Texture2D[Frames];
+            for (int i = 0; i < Frames; ++i) tex[i] = new Texture2D(Mama.gfxd, width, height);
+        }
         #endregion
 
         #region Image Format
@@ -207,6 +213,33 @@ namespace TrickyUnits {
         public void IGetF(int idx, ref int w,ref int h) { w = tex[idx].Width; h = tex[idx].Height; }
         #endregion
 
+
+        #region Save
+        void Save(int frame,string file,byte quality = 5) {
+            var bto = QuickStream.WriteFile(file);
+            tex[frame].SaveAsPng(bto.GetStream(),tex[frame].Width,tex[frame].Height);
+            bto.Close();
+        }
+        void Save(string file, byte quality = 5) => Save(0, file, quality);
+
+        void Save(int frame,TJCRCreate j,string entry, string Storage="Store", string Author="", string Notes="",byte quality = 5) {
+            var bto = j.NewEntry(entry, Storage, Author, Notes);
+            tex[frame].SaveAsPng(bto.GetStream, tex[frame].Width, tex[frame].Height);
+            bto.Close();
+        }
+
+        void Save(TJCRCreate j, string entry, string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) => Save(0, j, entry, Storage, Author, Notes, quality);
+
+        void SaveBundle(TJCRCreate j, string prefix = "", string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) {
+            for (int i = 0; i < tex.Length; i++) Save(i, j, $"{prefix}{qstr.Right($"0000000000{i}", 9)}.png", Storage, Author, Notes, quality);
+        }
+        void SaveBundle(string jcr, string prefix = "", string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) {
+            var j = new TJCRCreate(jcr, Storage);
+            SaveBundle(j, prefix, Storage, Author, Notes, quality);
+            j.Close();
+        }
+
+        #endregion
 
         #region Welcome to the SHOW
         Vector2 dc = new Vector2();
@@ -710,6 +743,7 @@ namespace TrickyUnits {
             var JCR = JCR6.Dir(JCRF);
             return GetBundle(JCR, bundle);
         }
+        static public TQMGImage NewImage(int w, int h, int f = 1) => new TQMGImage(me, w, h, f);
         static public int ScrWidth => me.ScrWidth;
         static public int ScrHeight => me.ScrHeight;
 
