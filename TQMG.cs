@@ -6,7 +6,7 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL was not
 // distributed with this file, You can obtain one at
 // http://mozilla.org/MPL/2.0/.
-// Version: 19.09.14
+// Version: 19.10.24
 // EndLic
 
 
@@ -60,11 +60,14 @@ namespace TrickyUnits {
             if (tex == null) { parent.Error($"I could not load {file} from JCR resource"); return; }
             var hotfile = $"{qstr.StripExt(file)}.hot";
             if (JCR.Exists(hotfile)) {
+                Debug.WriteLine($"Loading hotspots: {hotfile}");
                 var str = JCR.LoadString(hotfile).Trim();
                 var spl = str.Split(',');
                 if (spl.Length < 2) { parent.Error($"Invalid data in hotpot file {hotfile} for {file}"); return; }
                 hotx = qstr.ToInt(spl[0]);
                 hoty = qstr.ToInt(spl[1]);
+            } else {
+                Debug.WriteLine($"No hotspot file found ({hotfile})");
             }
         }
 
@@ -89,6 +92,20 @@ namespace TrickyUnits {
             tex[0] = Texture2D.FromStream(Mama.gfxd, bt.GetStream());
             bt.Close();
             if (tex == null) parent.Error($"I could not load {file} from JCR resource");
+            var JCR = Mama.jcr;
+            var hotfile = $"{qstr.StripExt(file)}.hot";
+            if (JCR.Exists(hotfile)) {
+                Debug.WriteLine($"Loading hotspots: {hotfile}");
+                var str = JCR.LoadString(hotfile).Trim();
+                var spl = str.Split(',');
+                if (spl.Length < 2) { parent.Error($"Invalid data in hotpot file {hotfile} for {file}"); return; }
+                hotx = qstr.ToInt(spl[0]);
+                hoty = qstr.ToInt(spl[1]);
+                Debug.WriteLine($"Hotspot for {file} is set to ({hotx},{hoty})");
+            } else {
+                Debug.WriteLine($"No hotspot file found ({hotfile})");
+            }
+
         }
 
         public TQMGImage(Class_TQMG parent, int length, bool avar)
@@ -234,6 +251,39 @@ namespace TrickyUnits {
             //Mama.spriteBatch.Draw(tex[Frame], vpos, drect, null, vhot, Mama.rotation, null, Mama.mColor);
             Mama.spriteBatch.Draw(tex[Frame], drect, null, Mama.mColor, Mama.rotation, vhot, SpriteEffects.None, 1);
         }
+
+        public Color GetPixel(int x, int y, int Frame = 0) {
+            if (x < 0 || y < 0 || x >= Width || y >= Height) throw new Exception($"GetPixel({x},{y},{Frame}): Out of range! ({Width}x{Height})");
+            var Dat = new Color[tex[Frame].Width * tex[Frame].Height];
+            tex[Frame].GetData<Color>(Dat);
+            return Dat[y * tex[Frame].Width + x];
+        }
+
+        public void PutPixel(int x, int y, int Frame, Color Pixel) {
+            if (x < 0 || y < 0 || x >= Width || y >= Height) throw new Exception($"PutPixel({x},{y},{Frame},<ColorData>): Out of range! ({Width}x{Height})");
+            var Dat = new Color[tex[Frame].Width * tex[Frame].Height];
+            tex[Frame].GetData<Color>(Dat);
+            Dat[y * tex[Frame].Width + x] = Pixel;
+            tex[Frame].SetData<Color>(Dat);
+        }
+        public void PutPixel(int x, int y, Color Pixel) => PutPixel(x, y, 0, Pixel);
+        public void PutPixel(int x, int y, int Frame, byte r, byte g, byte b) {
+            var Pixel = GetPixel(x, y,Frame);
+            Pixel.R = r;
+            Pixel.G = g;
+            Pixel.B = b;
+            PutPixel(x, y, Frame, Pixel);
+        }
+        public void PutPixel(int x, int y, byte r, byte g, byte b) => PutPixel(x, y, 0, r, g, b);
+        public void PutPixel(int x, int y, int Frame, byte r, byte g, byte b,byte alpha) {
+            var Pixel = GetPixel(x, y, Frame);
+            Pixel.R = r;
+            Pixel.G = g;
+            Pixel.B = b;
+            Pixel.A = alpha;
+            PutPixel(x, y, Frame, Pixel);
+        }
+        public void PutPixel(int x, int y, byte r, byte g, byte b, byte a) => PutPixel(x, y, 0, r, g, b, a);
         #endregion
 
     }
@@ -421,7 +471,7 @@ namespace TrickyUnits {
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
-            MKL.Version("TQMG - TQMG.cs","19.09.14");
+            MKL.Version("TQMG - TQMG.cs","19.10.24");
             #endregion
 
             #region TQMG core setup
@@ -810,6 +860,7 @@ namespace TrickyUnits {
 
 
 }
+
 
 
 
