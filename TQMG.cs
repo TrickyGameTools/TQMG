@@ -37,6 +37,61 @@ using KthuraEdit.Stages;
 
 namespace TrickyUnits { 
 
+    class TQMG_NeedParentImage_Exception : Exception {
+        new public readonly string Message = "A parent image is needed";
+    }
+
+    class TQMGPixMap {
+
+        TQMGImage parent;
+        public readonly int width, height;
+        Color[] PixMap;
+        int parentframe = 0;
+
+        void NeedParent() {
+            if (parent == null) throw new TQMG_NeedParentImage_Exception();
+        }
+
+        public TQMGPixMap(int w, int h) {
+            var p = TQMG.NewImage(w, h);
+            width = w;
+            height = h;
+            PixMap = p.PixMap(0);
+        }
+
+        public TQMGPixMap(TQMGImage parent,int Frame=0) {
+            PixMap = parent.PixMap(Frame);
+            this.parent = parent;
+            width = parent.Width;
+            height = parent.Height;
+            parentframe = Frame;
+        }
+
+        public void Pull(int Frame=-1) {
+            if (Frame < 0) Frame = parentframe;
+            NeedParent();
+            PixMap = parent.PixMap(Frame);            
+        }
+
+        public void Push(int Frame = -1) {
+            if (Frame < 0) Frame = parentframe;
+            NeedParent();
+            parent.PixMap(PixMap,Frame);
+        }
+
+        public Color this[int x,int y] {
+            get {
+                if (x < 0 || y < 0 || x >= width || y >= height) throw new Exception($"PixMap[{x},{y}]: Out of range! ({width}x{height})");
+                return PixMap[y * width + x];
+            }
+            set {
+                if (x < 0 || y < 0 || x >= width || y >= height) throw new Exception($"PixMap[{x},{y}]: Out of range! ({width}x{height})");
+                PixMap[y * width + x] = value;
+            }
+        }
+
+    }
+
     #region image
     class TQMGImage{
         #region Image declarations
@@ -215,25 +270,26 @@ namespace TrickyUnits {
 
 
         #region Save
-        void Save(int frame,string file,byte quality = 5) {
+        public void Save(int frame,string file,byte quality = 5) {
             var bto = QuickStream.WriteFile(file);
             tex[frame].SaveAsPng(bto.GetStream(),tex[frame].Width,tex[frame].Height);
             bto.Close();
         }
-        void Save(string file, byte quality = 5) => Save(0, file, quality);
+        public void Save(string file, byte quality = 5) => Save(0, file, quality);
 
-        void Save(int frame,TJCRCreate j,string entry, string Storage="Store", string Author="", string Notes="",byte quality = 5) {
+        public void Save(int frame,TJCRCreate j,string entry, string Storage="Store", string Author="", string Notes="",byte quality = 5) {
             var bto = j.NewEntry(entry, Storage, Author, Notes);
+            if (bto == null) throw new Exception(JCR6.JERROR);
             tex[frame].SaveAsPng(bto.GetStream, tex[frame].Width, tex[frame].Height);
             bto.Close();
         }
 
-        void Save(TJCRCreate j, string entry, string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) => Save(0, j, entry, Storage, Author, Notes, quality);
+        public void Save(TJCRCreate j, string entry, string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) => Save(0, j, entry, Storage, Author, Notes, quality);
 
-        void SaveBundle(TJCRCreate j, string prefix = "", string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) {
+        public void SaveBundle(TJCRCreate j, string prefix = "", string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) {
             for (int i = 0; i < tex.Length; i++) Save(i, j, $"{prefix}{qstr.Right($"0000000000{i}", 9)}.png", Storage, Author, Notes, quality);
         }
-        void SaveBundle(string jcr, string prefix = "", string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) {
+        public void SaveBundle(string jcr, string prefix = "", string Storage = "Store", string Author = "", string Notes = "", byte quality = 5) {
             var j = new TJCRCreate(jcr, Storage);
             SaveBundle(j, prefix, Storage, Author, Notes, quality);
             j.Close();
@@ -317,6 +373,16 @@ namespace TrickyUnits {
             PutPixel(x, y, Frame, Pixel);
         }
         public void PutPixel(int x, int y, byte r, byte g, byte b, byte a) => PutPixel(x, y, 0, r, g, b, a);
+
+        public Color[] PixMap(int Frame = 0) {
+            var ret = new Color[tex[Frame].Width * tex[Frame].Height];
+            tex[Frame].GetData<Color>(ret);
+            return ret;
+        }
+
+        public void PixMap(Color[] map, int Frame = 0) {
+            tex[Frame].SetData<Color>(map);
+        }
         #endregion
 
     }
