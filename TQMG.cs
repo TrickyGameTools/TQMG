@@ -82,11 +82,11 @@ namespace TrickyUnits {
         public Color this[int x,int y] {
             get {
                 if (x < 0 || y < 0 || x >= width || y >= height) throw new Exception($"PixMap[{x},{y}]: Out of range! ({width}x{height})");
-                return PixMap[y * width + x];
+                return PixMap[(y * width) + x];
             }
             set {
                 if (x < 0 || y < 0 || x >= width || y >= height) throw new Exception($"PixMap[{x},{y}]: Out of range! ({width}x{height})");
-                PixMap[y * width + x] = value;
+                PixMap[(y * width) + x] = value;
             }
         }
 
