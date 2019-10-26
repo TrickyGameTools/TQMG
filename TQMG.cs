@@ -6,7 +6,7 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL was not
 // distributed with this file, You can obtain one at
 // http://mozilla.org/MPL/2.0/.
-// Version: 19.10.25
+// Version: 19.10.26
 // EndLic
 
 
@@ -181,6 +181,7 @@ namespace TrickyUnits {
             var fls = new List<string>();
             if (!qstr.Suffixed(b,"/")) b += "/";
             var count = 0;
+            if (JCR == null) throw new Exception("The Bundle loader received 'null' for a JCR resource!");
             foreach(string en in JCR.Entries.Keys) {
                 if (qstr.Prefixed(en,b) && (max==0 || count < max) && (qstr.Suffixed(en,".PNG") || qstr.Suffixed(en,".JPG"))) {
                     fls.Add(en);
@@ -570,7 +571,7 @@ namespace TrickyUnits {
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
-            MKL.Version("TQMG - TQMG.cs","19.10.25");
+            MKL.Version("TQMG - TQMG.cs","19.10.26");
             #endregion
 
             #region TQMG core setup
@@ -805,10 +806,11 @@ namespace TrickyUnits {
         static public TQMGImage GetImage(QuickStream stream, bool close=true) => me.GetImage(stream,close);
         static public TQMGImage GetImage(TJCRDIR JCR, string bundle, int max) => new TQMGImage(me, JCR, bundle, max);
         static public TQMGImage GetBundle(TJCRDIR JCR, string bundle) => GetImage(JCR, bundle, 0);
-        static public TQMGImage GetBundle(string JCRF,string bundle = "") {
+        static public TQMGImage GetBundle(string JCRF,string bundle) {
             var JCR = JCR6.Dir(JCRF);
             return GetBundle(JCR, bundle);
         }
+        static public TQMGImage GetBundle(string bundle) => GetBundle(me.jcr, bundle);
         static public TQMGImage NewImage(int w, int h, int f = 1) => new TQMGImage(me, w, h, f);
         static public int ScrWidth => me.ScrWidth;
         static public int ScrHeight => me.ScrHeight;
@@ -960,6 +962,8 @@ namespace TrickyUnits {
 
 
 }
+
+
 
 
 
