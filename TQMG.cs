@@ -6,7 +6,7 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL was not
 // distributed with this file, You can obtain one at
 // http://mozilla.org/MPL/2.0/.
-// Version: 19.10.26
+// Version: 19.11.21
 // EndLic
 
 
@@ -210,6 +210,34 @@ namespace TrickyUnits {
             tex = new Texture2D[Frames];
             for (int i = 0; i < Frames; ++i) tex[i] = new Texture2D(Mama.gfxd, width, height);
         }
+
+
+        public TQMGImage(Class_TQMG parent,TQMGImage From,int width, int height, int frames, int startx=0,int starty = 0) {
+            Mama = parent;
+            tex = new Texture2D[frames];
+            int fx = startx;
+            int fy = starty;
+            var pixfrom = new Color[From.tex[0].Width * From.tex[0].Height];
+            From.tex[0].GetData(pixfrom);
+            if (From.Width < fx + width)
+                throw new Exception("Invalid X starting point for animation");
+            for (int f = 0; f < frames; f++) {
+                if (From.Height < fy + height)
+                    throw new Exception("Animation load out of bounds");
+                var pixto = new Color[width * height];
+                for(int y=0;y<height;y++) for(int x = 0; x < width; x++) {
+                        pixto[y * width + x] = pixfrom[(y + fy) * From.tex[0].Width + (x + fx)];
+                    }
+                tex[f] = new Texture2D(parent.gfxd, width, height);
+                tex[f].SetData(pixto);
+                fx += width;
+                if (fx+width>From.Width) {
+                    fx = startx;
+                    fy += height;
+                }
+            }
+        }
+
         #endregion
 
         #region Image Format
@@ -384,6 +412,24 @@ namespace TrickyUnits {
         public void PixMap(Color[] map, int Frame = 0) {
             tex[Frame].SetData<Color>(map);
         }
+
+        public void ColReplace(Color Ori,Color Become,int Frame=0,bool MindAlpha=false) {
+            if (Frame < 0) {
+                for (int i = 0; i < Frames; i++) ColReplace(Ori, Become, i);
+                return;
+            }
+                
+            var pm = PixMap(Frame);
+            for(int i = 0; i < pm.Length; i++) {
+                if(pm[i].R==Ori.R && pm[i].G == Ori.G && pm[i].B == Ori.B && (pm[i].A==Ori.A || (!MindAlpha))){
+                    pm[i] = Become;
+                }
+            }
+            PixMap(pm, Frame);
+        }
+
+
+        public Texture2D GetTex(int Frame) => tex[Frame];
         #endregion
 
     }
@@ -571,7 +617,7 @@ namespace TrickyUnits {
         public Class_TQMG(GraphicsDeviceManager agfxm, GraphicsDevice agfxd, SpriteBatch aSB, TJCRDIR ajcr) {
             #region MKL
             MKL.Lic    ("TQMG - TQMG.cs","Mozilla Public License 2.0");
-            MKL.Version("TQMG - TQMG.cs","19.10.26");
+            MKL.Version("TQMG - TQMG.cs","19.11.21");
             #endregion
 
             #region TQMG core setup
@@ -812,6 +858,23 @@ namespace TrickyUnits {
         }
         static public TQMGImage GetBundle(string bundle) => GetBundle(me.jcr, bundle);
         static public TQMGImage NewImage(int w, int h, int f = 1) => new TQMGImage(me, w, h, f);
+
+        static public TQMGImage GetAnimImage(TQMGImage From, int width, int height, int frames, int startx= 0, int starty = 0) => new TQMGImage(me, From, width, height, frames, startx, starty);
+        static public TQMGImage GetAnimImage(string FromFile, int width, int height, int frames, int startx = 0, int starty = 0) {
+            var img = GetImage(FromFile);
+            return GetAnimImage(img, width, height, frames, startx, starty);
+        }
+
+        static public TQMGImage GetAnimImage(QuickStream FromFile, int width, int height, int frames, int startx = 0, int starty = 0,bool close=true) {
+            var img = GetImage(FromFile,close);
+            return GetAnimImage(img, width, height, frames, startx, starty);
+        }
+        static public TQMGImage GetAnimImage(TJCRDIR FromJCR,string FromFile, int width, int height, int frames, int startx = 0, int starty = 0) {
+            var img = GetImage(FromJCR,FromFile,1);
+            return GetAnimImage(img, width, height, frames, startx, starty);
+        }
+
+
         static public int ScrWidth => me.ScrWidth;
         static public int ScrHeight => me.ScrHeight;
 
@@ -951,10 +1014,14 @@ namespace TrickyUnits {
 #endif
         }
 
+        static public void Plot(int x, int y) => DrawRectangle(x, y, 1, 1);
+
         static public void RotateRAD(float rad) => me.rotation = rad;
         static public void RotateDEG(int deg) => me.rotation = (float)(deg*(Math.PI/180));
         static public void Scale(int ascale) => Scale(ascale, ascale);
         static public void Scale(int scx, int scy) { me.ScaleX = scx; me.ScaleY = scy; }
+        static public int ScaleX { get => me.ScaleX; set { me.ScaleX = value; } }
+        static public int ScaleY { get => me.ScaleY; set { me.ScaleY = value; } }
     }
     #endregion
 
@@ -962,6 +1029,7 @@ namespace TrickyUnits {
 
 
 }
+
 
 
 
